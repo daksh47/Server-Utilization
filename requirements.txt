@@ -1,5 +1,5 @@
-pip install plotly
-pip install pymysql
-pip install uuid
-pip install matplotlib
-pip install sqlalchemy
+plotly
+pymysql
+uuid
+matplotlib
+sqlalchemy
