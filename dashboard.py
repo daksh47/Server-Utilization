@@ -31,7 +31,7 @@ def display_controls():
             max_value=date.today()
         )
     with c1:
-        start_day = st.date_input("Start Day", value=date.today() - timedelta(days=6), key="start_day")
+        start_day = st.date_input("Start Day", value=date.today() - timedelta(days=6), key="start_day", max_value=date.today())
     
     if start_day > end_day:
         st.error("Error: Start date must be before end date.")
