@@ -18,6 +18,7 @@ st.set_page_config(
 )
 
 st.title("📊 Server Utilization")
+st.markdown("Version 2 : updated 27th August 2025")
 
 def display_controls():
     """Renders all the input widgets and returns their current values."""
@@ -142,13 +143,12 @@ def get_data(start_date, end_date, tables, server):
         while tm_start_date <= tm_end_date:
             all_dates[str(tm_start_date)]=set()
             all_dates_count[str(tm_start_date)]=0
-            tm_start_date += timedelta(days=1)
-        
-        for ij in range(len(site_details_df)):
-            data = site_details_df.iloc[ij]
-            start_dt = data['start_time']
-            end_dt = data['end_time']
-            site_id = data['operator_site_id']
+            tm_start_date += timedelta(days=1)            
+
+        for row in site_details_df.itertuples():
+            start_dt = row.start_time
+            end_dt = row.end_time
+            site_id = row.operator_site_id
 
             start_date_str = f"{start_dt.day}{ordinal_suffix(start_dt.day)} {start_dt.strftime('%b %Y')}"
             
@@ -173,7 +173,7 @@ def get_data(start_date, end_date, tables, server):
                 "Operator_site_id": site_id
             })
 
-        for row in site_details_df.itertuples():
+
             start = str(row.start_time)
             end = str(row.end_time)
 
@@ -198,13 +198,14 @@ def get_data(start_date, end_date, tables, server):
                     all_dates_count[start.split(" ")[0].strip()] += 1
 
                 if end.split(" ")[0].strip() in all_dates:
-                    se = all_dates[end.split(" ")[0].strip()]
-                    if end_time >= 86400:
-                        end_time = 86399
-                    for i in range(0,end_time+1):
-                        se.add(i)
-                    all_dates[end.split(" ")[0].strip()] = se
-                    all_dates_count[end.split(" ")[0].strip()] += 1
+                    if end_dt.date() <= end_date:
+                        se = all_dates[end.split(" ")[0].strip()]
+                        if end_time >= 86400:
+                            end_time = 86399
+                        for i in range(0,end_time+1):
+                            se.add(i)
+                        all_dates[end.split(" ")[0].strip()] = se
+                        all_dates_count[end.split(" ")[0].strip()] += 1
         final_data[table] = [pd.DataFrame(data1), all_dates, all_dates_count]
 
         # usuage = dict()
