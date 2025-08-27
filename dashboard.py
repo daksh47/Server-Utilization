@@ -28,14 +28,16 @@ def display_controls():
         end_day = st.date_input(
             "End Day",
             value=start_day if start_day else date.today(),
-            key="end_day",
-            max_value=date.today()
+            key="end_day"
+            ,max_value=date.today()
         )
     with c1:
-        start_day = st.date_input("Start Day", value=date.today() - timedelta(days=6), key="start_day", max_value=date.today())
+        start_day = st.date_input("Start Day", value=date.today() - timedelta(days=6), key="start_day"
+        , max_value=date.today()
+        )
     
     if start_day > end_day:
-        st.error("Error: Start date must be before end date.")
+        st.error("Note : Start date must be before end date.")
         return None
 
     left_col, right_col = st.columns([1, 1])
@@ -56,12 +58,12 @@ def display_controls():
             selected_tables.append("processing_log_test")
 
         if not selected_tables:
-            st.error("Error: Please select at least one table.")
+            st.error("Note : Please select at least one table.")
             return None
 
         # --- CHANGE 2: Minimum of one checkbox should be checked ---
         if not selected_tables:
-            st.error("Error: Please select at least one table.")
+            st.error("Note : Please select at least one table.")
             return None
     with right_col:
         # NOTE: We map user-friendly names to integer values for the query
@@ -233,7 +235,10 @@ def display_chart(df1,start_date,end_date):
     all_dates_in_range = pd.date_range(start=start_date, end=end_date, freq='D')
     table_names = [] # In descending order of preference
 
-    if len(df1['scraper_run']) !=0:
+    data_present = False
+
+    if 'scraper_run' in df1 and df1['scraper_run'] and len(df1['scraper_run']) !=0:
+        data_present=True
         df = df1['scraper_run'][0]
         df['TaskID'] = df.index.astype(str)
         
@@ -253,7 +258,8 @@ def display_chart(df1,start_date,end_date):
         df['Duration_str'] = df['Duration'].apply(lambda x: str(x).split('days')[-1].strip())
         both=True
         table_names.append("scraper_run")
-    if len(df1['processing_log_test'])!=0:
+    if 'processing_log_test' in df1 and df1['processing_log_test'] and len(df1['processing_log_test'])!=0:
+        data_present=True
         table_names.append("processing_log_test")
         df2 = df1['processing_log_test'][0]
         df2['TaskID'] = df2.index.astype(str)
@@ -277,84 +283,86 @@ def display_chart(df1,start_date,end_date):
         else:
             df = df2
     
-    df['sort_key_date'] = pd.to_datetime(df['Day_New'].str.split(' - ').str[0], format='%d %b %Y')
+    if data_present:
+    
+        df['sort_key_date'] = pd.to_datetime(df['Day_New'].str.split(' - ').str[0], format='%d %b %Y')
+            
+        # 2. Create a text column to sort by name ('scraper_run' vs 'processing_log_test')
+        df['sort_key_text'] = df['Day_New'].str.split(' - ').str[1]
         
-    # 2. Create a text column to sort by name ('scraper_run' vs 'processing_log_test')
-    df['sort_key_text'] = df['Day_New'].str.split(' - ').str[1]
-    
-    # 3. Apply the multi-level sort
-    df.sort_values(by=['sort_key_date', 'sort_key_text'], ascending=[False, False], inplace=True)
-    
-    # 4. Drop the temporary helper columns
-    df.drop(columns=['sort_key_date', 'sort_key_text'], inplace=True)
-
-    full_y_axis_order = []
-    for day in reversed(all_dates_in_range):
-        for table in table_names:
-            formatted_date = day.strftime('%d %b %Y')
-            full_y_axis_order.append(f"{formatted_date} - {table}")
-
-    valid_dates = {item.split(' - ')[0] for item in full_y_axis_order}
-    df = df[df['Day_Normalized'].isin(valid_dates)]
-
-    if not df.empty:
-        existing_days = set(df['Day_New'].unique())
-    else:
-        existing_days = set()
-    
-    missing_days = [day for day in full_y_axis_order if day not in existing_days]
-    if missing_days:
-        generic_date = datetime(2000, 1, 1)
-        placeholder_data = {
-            'Day_New': missing_days,
-            'start_plot': generic_date,       # Use NaT (Not a Time) for datetime columns
-            'finish_plot': generic_date,
-            'TaskID': 'placeholder',
-            'Start': '',                # Use empty strings for custom data
-            'Finish': '',
-            'Duration_str': '',
-            'Operator_site_id': None
-        }
-        placeholders_df = pd.DataFrame(placeholder_data)
+        # 3. Apply the multi-level sort
+        df.sort_values(by=['sort_key_date', 'sort_key_text'], ascending=[False, False], inplace=True)
         
-        # 4. Add the placeholders to the main DataFrame
-        df = pd.concat([df, placeholders_df], ignore_index=True)
-   
+        # 4. Drop the temporary helper columns
+        df.drop(columns=['sort_key_date', 'sort_key_text'], inplace=True)
 
-    if not df.empty:
-        fig = px.timeline(
-            df,
-            x_start="start_plot", 
-            x_end="finish_plot", 
-            y="Day_New",
-            color="TaskID",
-            category_orders={"Day_New": full_y_axis_order},
-            custom_data=['Start', 'Finish', 'Duration_str', 'Operator_site_id'],
-            title="Daily Script Run-Time",
-            range_x=[datetime(2000, 1, 1, 0, 0, 0), datetime(2000, 1, 1, 23, 59, 59)]
-        )
-        fig.update_traces(hovertemplate='<b>Day:</b> %{y}<br>' +
-                                    '<b>Start:</b> %{customdata[0]}<br>' +
-                                    '<b>Finish:</b> %{customdata[1]}<br>' +
-                                    '<b>Duration:</b> %{customdata[2]}<br>'+
-                                    '<b>Operator_site_id:</b> %{customdata[3]}<extra></extra>')
-        fig.update_layout(
-            title_font_size=24,
-            xaxis_title="Time of Day (24-Hour)",
-            yaxis_title="Date",
-            showlegend=False,
-            plot_bgcolor='rgba(0,0,0,0)',
-            paper_bgcolor='rgba(0,0,0,0)',
-            xaxis_rangeslider_visible=False
-        )
-        fig.update_xaxes(
-            tickformat='%H:%M', 
-        )
+        full_y_axis_order = []
+        for day in reversed(all_dates_in_range):
+            for table in table_names:
+                formatted_date = day.strftime('%d %b %Y')
+                full_y_axis_order.append(f"{formatted_date} - {table}")
 
-        config = {
-            'displayModeBar': True
-        }
-        st.plotly_chart(fig, use_container_width=True, config=config)
+        valid_dates = {item.split(' - ')[0] for item in full_y_axis_order}
+        df = df[df['Day_Normalized'].isin(valid_dates)]
+
+        if not df.empty:
+            existing_days = set(df['Day_New'].unique())
+        else:
+            existing_days = set()
+        
+        missing_days = [day for day in full_y_axis_order if day not in existing_days]
+        if missing_days:
+            generic_date = datetime(2000, 1, 1)
+            placeholder_data = {
+                'Day_New': missing_days,
+                'start_plot': generic_date,       # Use NaT (Not a Time) for datetime columns
+                'finish_plot': generic_date,
+                'TaskID': 'placeholder',
+                'Start': '',                # Use empty strings for custom data
+                'Finish': '',
+                'Duration_str': '',
+                'Operator_site_id': None
+            }
+            placeholders_df = pd.DataFrame(placeholder_data)
+            
+            # 4. Add the placeholders to the main DataFrame
+            df = pd.concat([df, placeholders_df], ignore_index=True)
+    
+
+        if not df.empty:
+            fig = px.timeline(
+                df,
+                x_start="start_plot", 
+                x_end="finish_plot", 
+                y="Day_New",
+                color="TaskID",
+                category_orders={"Day_New": full_y_axis_order},
+                custom_data=['Start', 'Finish', 'Duration_str', 'Operator_site_id'],
+                title="Daily Script Run-Time",
+                range_x=[datetime(2000, 1, 1, 0, 0, 0), datetime(2000, 1, 1, 23, 59, 59)]
+            )
+            fig.update_traces(hovertemplate='<b>Day:</b> %{y}<br>' +
+                                        '<b>Start:</b> %{customdata[0]}<br>' +
+                                        '<b>Finish:</b> %{customdata[1]}<br>' +
+                                        '<b>Duration:</b> %{customdata[2]}<br>'+
+                                        '<b>Operator_site_id:</b> %{customdata[3]}<extra></extra>')
+            fig.update_layout(
+                title_font_size=24,
+                xaxis_title="Time of Day (24-Hour)",
+                yaxis_title="Date",
+                showlegend=False,
+                plot_bgcolor='rgba(0,0,0,0)',
+                paper_bgcolor='rgba(0,0,0,0)',
+                xaxis_rangeslider_visible=False
+            )
+            fig.update_xaxes(
+                tickformat='%H:%M', 
+            )
+
+            config = {
+                'displayModeBar': True
+            }
+            st.plotly_chart(fig, use_container_width=True, config=config)
 
 def format_duration(seconds):
     """Converts a given number of seconds into a string format of hr, min, s."""
@@ -409,7 +417,7 @@ if __name__ == "__main__":
             #     options=dropdown_options
             # )
             for table_name_dis in ['scraper_run',"processing_log_test"]:
-                if processed_df[table_name_dis]:
+                if table_name_dis in processed_df and processed_df[table_name_dis]:
                     st.header(f"Displaying {table_name_dis} metrics from {start_day.strftime('%b %d, %Y')} to {end_day.strftime('%b %d, %Y')}")
                     usage = processed_df[table_name_dis][1]
                     count = processed_df[table_name_dis][2]
