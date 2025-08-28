@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 st.title("📊 Server Utilization")
-st.markdown("Version 2 : updated 27th August 2025 11:00")
+st.markdown("Last Updated 28th August 2025 3:30pm")
 
 def display_controls():
     """Renders all the input widgets and returns their current values."""
@@ -125,7 +125,7 @@ def get_data(start_date, end_date, tables, server):
             AND date(created_at + INTERVAL 330 MINUTE ) <= '{end_date.strftime('%Y-%m-%d')}'
             and message = 'processing_end' order by created_at
             )
-            select c1.operator_site_id, c1.created_at + INTERVAL 330 MINUTE as start_time, ifnull(c2.created_at,c1.created_at+interval 60 minute) + INTERVAL '330:30' MINUTE_SECOND as end_time 
+            select c1.operator_site_id, (c1.created_at + INTERVAL 330 MINUTE) as start_time, (ifnull(c2.created_at,c1.created_at+interval 60 minute) + INTERVAL '330:30' MINUTE_SECOND) as end_time 
             from cte c1
             left join cte1 c2 on c1.run_id = c2.run_id
             order by start_time desc;
