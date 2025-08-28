@@ -86,7 +86,6 @@ def time_to_seconds(time_str):
         # Handles cases where the string might be malformed
         return 0
 
-@st.cache_data
 def get_data(start_date, end_date, tables, server):
     """Fetches and processes data based on user selections."""
     
