@@ -299,8 +299,11 @@ def display_chart(df1,start_date,end_date):
         full_y_axis_order = []
         for day in reversed(all_dates_in_range):
             for table in table_names:
-                formatted_date = day.strftime('%d %b %Y')
+                # formatted_date = day.strftime('%d %b %Y')
+                formatted_date = f"{day.day} {day.strftime('%b %Y')}"
+                # print(formatted_date)
                 full_y_axis_order.append(f"{formatted_date} - {table}")
+        # print(df['Day_New'])
 
         valid_dates = {item.split(' - ')[0] for item in full_y_axis_order}
         df = df[df['Day_Normalized'].isin(valid_dates)]
