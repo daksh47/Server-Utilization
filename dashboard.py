@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 st.title("📊 Server Utilization")
-st.markdown("Last Updated 2th Sept 2025 11:00am")
+st.markdown("Last Updated 10th Sept 2025 02:10pm")
 
 def display_controls():
     """Renders all the input widgets and returns their current values."""
