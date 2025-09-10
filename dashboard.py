@@ -124,7 +124,8 @@ def get_data(start_date, end_date, tables, server):
             AND date(created_at + INTERVAL 330 MINUTE ) <= '{end_date.strftime('%Y-%m-%d')}'
             and message = 'processing_end' order by created_at
             )
-            select c1.operator_site_id, (c1.created_at + INTERVAL 330 MINUTE) as start_time, (ifnull(c2.created_at,c1.created_at+interval 60 minute) + INTERVAL '330:30' MINUTE_SECOND) as end_time 
+            select c1.operator_site_id, (c1.created_at) as start_time, 
+            ifnull(c2.created_at,"FAILED_SCRIPT") as end_time 
             from cte c1
             left join cte1 c2 on c1.run_id = c2.run_id
             order by start_time desc;
@@ -145,12 +146,20 @@ def get_data(start_date, end_date, tables, server):
         while tm_start_date <= tm_end_date:
             all_dates[str(tm_start_date)]=set()
             all_dates_count[str(tm_start_date)]=0
-            tm_start_date += timedelta(days=1)            
+            tm_start_date += timedelta(days=1)
+
+        if table != "scraper_run":
+            site_details_df['end_time_1'] = site_details_df['end_time'].copy()
+            site_details_df.loc[site_details_df['end_time'] == 'FAILED_SCRIPT', 'end_time'] = pd.to_datetime(site_details_df['start_time']) + pd.Timedelta(minutes=10)
+            site_details_df['end_time'] = pd.to_datetime(site_details_df['end_time']) + pd.Timedelta(hours=5, minutes=30)
+            site_details_df['start_time'] = pd.to_datetime(site_details_df['start_time']) + pd.Timedelta(hours=5, minutes=30)
+
 
         for row in site_details_df.itertuples():
             start_dt = row.start_time
             end_dt = row.end_time
             site_id = row.operator_site_id
+            status =  (1 if row.data_gathering and row.data_verification and row.record_count else 0) if table == "scraper_run" else (1 if row.end_time_1 != "FAILED_SCRIPT" else -1)
 
             start_date_str = f"{start_dt.day}{ordinal_suffix(start_dt.day)} {start_dt.strftime('%b %Y')}"
             
@@ -162,7 +171,8 @@ def get_data(start_date, end_date, tables, server):
                         "Day": end_date_str,
                         "Start": "00:00:00",
                         "Finish": end_dt.strftime('%H:%M:%S'),
-                        "Operator_site_id": site_id
+                        "Operator_site_id": site_id,
+                        "Status":status
                     })
             else:
                 finish_time_for_start_day = end_dt.strftime('%H:%M:%S')
@@ -172,7 +182,8 @@ def get_data(start_date, end_date, tables, server):
                 "Day": start_date_str,
                 "Start": start_dt.strftime('%H:%M:%S'),
                 "Finish": finish_time_for_start_day,
-                "Operator_site_id": site_id
+                "Operator_site_id": site_id,
+                "Status":status
             })
 
 
@@ -330,7 +341,15 @@ def display_chart(df1,start_date,end_date):
             
             # 4. Add the placeholders to the main DataFrame
             df = pd.concat([df, placeholders_df], ignore_index=True)
-    
+
+        color_map = {
+            '1': 'green',
+            '0': 'red',
+            '-1': 'white'
+        }
+
+        # print(df['Status'])
+        df['Status'] = df['Status'].astype(str)
 
         if not df.empty:
             fig = px.timeline(
@@ -338,7 +357,8 @@ def display_chart(df1,start_date,end_date):
                 x_start="start_plot", 
                 x_end="finish_plot", 
                 y="Day_New",
-                color="TaskID",
+                color="Status",
+                color_discrete_map=color_map,
                 category_orders={"Day_New": full_y_axis_order},
                 custom_data=['Start', 'Finish', 'Duration_str', 'Operator_site_id'],
                 title="Daily Script Run-Time",
@@ -361,6 +381,7 @@ def display_chart(df1,start_date,end_date):
             fig.update_xaxes(
                 tickformat='%H:%M', 
             )
+
 
             config = {
                 'displayModeBar': True
