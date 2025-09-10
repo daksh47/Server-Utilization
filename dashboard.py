@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 st.title("📊 Server Utilization")
-st.markdown("Last Updated 10th Sept 2025 03:15pm")
+st.markdown("Last Updated 10th Sept 2025 03:55pm")
 
 def display_controls():
     """Renders all the input widgets and returns their current values."""
@@ -345,7 +345,7 @@ def display_chart(df1,start_date,end_date):
         color_map = {
             '1': 'green',
             '0': 'red',
-            '-1': 'white'
+            '-1': 'darkorange'
         }
 
         print(df['Status'].unique())
