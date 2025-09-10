@@ -18,7 +18,7 @@ st.set_page_config(
 )
 
 st.title("📊 Server Utilization")
-st.markdown("Last Updated 10th Sept 2025 02:10pm")
+st.markdown("Last Updated 10th Sept 2025 03:15pm")
 
 def display_controls():
     """Renders all the input widgets and returns their current values."""
@@ -159,7 +159,7 @@ def get_data(start_date, end_date, tables, server):
             start_dt = row.start_time
             end_dt = row.end_time
             site_id = row.operator_site_id
-            status =  (1 if row.data_gathering and row.data_verification and row.record_count else 0) if table == "scraper_run" else (1 if row.end_time_1 != "FAILED_SCRIPT" else -1)
+            status =  ('1' if row.data_gathering and row.data_verification and row.record_count else '0') if table == "scraper_run" else ('1' if row.end_time_1 != "FAILED_SCRIPT" else '-1')
 
             start_date_str = f"{start_dt.day}{ordinal_suffix(start_dt.day)} {start_dt.strftime('%b %Y')}"
             
@@ -348,8 +348,14 @@ def display_chart(df1,start_date,end_date):
             '-1': 'white'
         }
 
-        # print(df['Status'])
-        df['Status'] = df['Status'].astype(str)
+        print(df['Status'].unique())
+        status_map = {
+            '0':'Failed_Scraper',
+            '1':'Success',
+            '-1':'Failed_Processing'
+        }
+        df['Status_text'] = df['Status'].map(status_map) 
+        print(df['Status_text'])
 
         if not df.empty:
             fig = px.timeline(
@@ -360,14 +366,16 @@ def display_chart(df1,start_date,end_date):
                 color="Status",
                 color_discrete_map=color_map,
                 category_orders={"Day_New": full_y_axis_order},
-                custom_data=['Start', 'Finish', 'Duration_str', 'Operator_site_id'],
+                custom_data=['Start', 'Finish', 'Duration_str', 'Operator_site_id', 'Status_text'],
                 title="Daily Script Run-Time",
                 range_x=[datetime(2000, 1, 1, 0, 0, 0), datetime(2000, 1, 1, 23, 59, 59)]
             )
+
             fig.update_traces(hovertemplate='<b>Day:</b> %{y}<br>' +
                                         '<b>Start:</b> %{customdata[0]}<br>' +
                                         '<b>Finish:</b> %{customdata[1]}<br>' +
                                         '<b>Duration:</b> %{customdata[2]}<br>'+
+                                        '<b>Status:</b> %{customdata[4]}<br>'+
                                         '<b>Operator_site_id:</b> %{customdata[3]}<extra></extra>')
             fig.update_layout(
                 title_font_size=24,
